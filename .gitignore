@@ -9,3 +9,11 @@ build/
 .vscode/
 .idea/
 *~
+
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
