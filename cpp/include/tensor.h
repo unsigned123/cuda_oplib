@@ -173,24 +173,23 @@ TensorShape Tensor<T>::binary_broadcast(const TensorShape& another_shape) const
 {
     const TensorShape& this_shape = this->raw.shape;
 
-    size_t target_dims = std::max(this_shape.size(), another_shape.size());
+    size_t this_dims = this_shape.size(), another_dims = another_shape.size();
+
+    size_t target_dims = std::max(this_dims, another_dims);
 
     TensorShape broadcast_shape(target_dims, 1);
 
-    for (size_t i = target_dims - 1;;i--)
+    for (size_t i = 0;i < target_dims;i++)
     {
-        if (i < this_shape.size() && i < this_shape.size())
-            if (this_shape[i] != another_shape[i] && another_shape[i] > 1 && this_shape[i] > 1)
+        if (i < this_dims && i < another_dims)
+            if (this_shape[this_dims - i - 1] != another_shape[another_dims - i - 1] && another_shape[another_dims - i - 1] > 1 && this_shape[this_dims - i - 1] > 1)
                 throw std::runtime_error("FATAL: cudaoplib::Tensor::binary_broadcast Broadcast failed: dimensions mismatch.");
+ 
+        if (i < this_dims)
+            broadcast_shape[target_dims - i - 1] = std::max(this_shape[this_dims - i - 1], broadcast_shape[target_dims - i - 1]);
 
-        if (i < this_shape.size())
-            broadcast_shape[i] = std::max(this_shape[i], broadcast_shape[i]);
-
-        if (i < another_shape.size())
-            broadcast_shape[i] = std::max(another_shape[i], broadcast_shape[i]);
-
-        if (i == 0)
-            break;
+        if (i < another_dims)
+            broadcast_shape[target_dims - i - 1] = std::max(another_shape[another_dims - i - 1], broadcast_shape[target_dims - i - 1]);
     }
 
     return broadcast_shape;

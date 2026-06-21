@@ -57,7 +57,7 @@ struct Tensor
     TensorStride get_stride() const
     {
         TensorStride processed_stride;
-        processed_stride.fill(1);
+        processed_stride.fill(0);
 
         int offset = MAX_TENSOR_DIM - shape.size();
         for (size_t i = 0;i < shape.size();i++)

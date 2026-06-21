@@ -5,7 +5,7 @@ int main()
 {
     using namespace cudaoplib;
     Tensor<int> t1{{1, 2, 3}, {1, 2, 3}};
-    Tensor<int> t2 = t1;
+    Tensor<int> t2 = {1};
 
     Tensor<int> t3 = t2.to_gpu();
 
