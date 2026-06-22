@@ -263,6 +263,7 @@ void free_cpu_tensor(Tensor& tensor)
         throw std::runtime_error("FATAL: cudaoplib_kernel::free_cpu_tensor failed: Tensor is not on CPU.");
 
     operator delete(tensor.data);
+    tensor.data = nullptr;
 }
 
 void free_gpu_tensor(Tensor& tensor)
@@ -274,6 +275,7 @@ void free_gpu_tensor(Tensor& tensor)
         throw std::runtime_error("FATAL: cudaoplib_kernel::free_gpu_tensor failed: Tensor is on CPU.");
 
     CUDA_CHECK(cudaFree(tensor.data));
+    tensor.data = nullptr;
 }
 
 }; // namespace cudaoplib_kernel

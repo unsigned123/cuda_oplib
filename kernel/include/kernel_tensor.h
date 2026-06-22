@@ -73,21 +73,23 @@ struct Tensor
 
 // Utilities
 
-inline TensorShape boardcast_shape(const TensorShape& a, const TensorShape& b)
+inline TensorShape broadcast_shape(const TensorShape& a, const TensorShape& b)
 {
-    TensorShape boardcast_shape;
+    TensorShape broadcast_shape;
 
     for (int i = 0;i < MAX_TENSOR_DIM;i++)
     {
         if (a[i] == 1 && b[i] > 1)
-            boardcast_shape[i] = b[i];
+            broadcast_shape[i] = b[i];
         else if (b[i] == 1 && a[i] > 1)
-            boardcast_shape[i] = a[i];
+            broadcast_shape[i] = a[i];
+        else if (a[i] == b[i])
+            broadcast_shape[i] = a[i];
         else
-            throw std::runtime_error("FATAL: cudaoplib_kernel::boardcast_shape failed. Shape mismatch.");
+            throw std::runtime_error("FATAL: cudaoplib_kernel::broadcast_shape failed. Shape mismatch.");
     }
 
-    return boardcast_shape;
+    return broadcast_shape;
 }
 
 inline int get_dtype_size(DType dtype)

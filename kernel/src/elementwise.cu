@@ -138,7 +138,7 @@ template<typename T> __global__ void mod_kernel(
     if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, __half>)
         out[tid] = fmodf(a[offset_a], b[offset_b]);
     else
-        out[tid] = ((a[offset_a] % b[offset_b]) + b[offset_b]) % b[offset_b];
+        out[tid] = a[offset_a] % b[offset_b];
 }
 
 template<typename T> __global__ void remainder_kernel(
@@ -167,7 +167,7 @@ template<typename T> __global__ void remainder_kernel(
     if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, __half>)
         out[tid] = remainderf(a[offset_a], b[offset_b]);
     else
-        out[tid] = a[offset_a] % b[offset_b];
+        out[tid] = ((a[offset_a] % b[offset_b]) + b[offset_b]) % b[offset_b];
 }
 
 template<typename T> __global__ void eq_kernel(

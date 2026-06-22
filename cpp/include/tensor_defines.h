@@ -25,6 +25,13 @@ concept SupportedDType = std::same_as<T, int> || std::same_as<T, int8_t> || std:
 template<typename T>
 concept Scalar = !std::ranges::range<T>;
 
+template<typename T>
+concept CUDAFloatingPoint = std::is_floating_point_v<T> || std::is_same_v<T, __half>;
+
+template <typename T>
+concept ArithmeticType = !std::is_same_v<T, bool>;
+
+
 struct _ForceToUseRangeConstructor {};
 
 namespace _nested_initializer_list 
@@ -42,7 +49,7 @@ namespace _nested_initializer_list
 } // namespace cudaoplib::detail
 
 #define TENSOR_INIALIZER_LIST_CONSTRUCTOR(N) \
-    Tensor(typename cudaoplib::_nested_initializer_list::nested_initializer_list<T, N>::type list) : \
+    Tensor(typename cudaoplib::_nested_initializer_list::nested_initializer_list<LogicalDType, N>::type list) : \
         Tensor(list, _ForceToUseRangeConstructor{}) \
     {}
 
