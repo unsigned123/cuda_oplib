@@ -614,7 +614,7 @@ void eq(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 void neq(const Tensor& a, const Tensor& b, Tensor& out)
 {
@@ -636,7 +636,7 @@ void neq(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 
 void lt(const Tensor& a, const Tensor& b, Tensor& out)
@@ -659,7 +659,7 @@ void lt(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 
 void le(const Tensor& a, const Tensor& b, Tensor& out)
@@ -682,7 +682,7 @@ void le(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 
 void gt(const Tensor& a, const Tensor& b, Tensor& out)
@@ -705,7 +705,7 @@ void gt(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 void ge(const Tensor& a, const Tensor& b, Tensor& out)
 {
@@ -727,7 +727,7 @@ void ge(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 void logical_and(const Tensor& a, const Tensor& b, Tensor& out)
 {
@@ -749,7 +749,7 @@ void logical_and(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 void logical_or(const Tensor& a, const Tensor& b, Tensor& out)
 {
@@ -771,7 +771,7 @@ void logical_or(const Tensor& a, const Tensor& b, Tensor& out)
         );
     };
 
-    DISPATCH_DTYPE(out.dtype, launcher)
+    DISPATCH_DTYPE(a.dtype, launcher)
 }
 void pow(const Tensor& a, const Tensor& b, Tensor& out)
 {

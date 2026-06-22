@@ -23,10 +23,11 @@ namespace cudaoplib
 {
 // Classes
 
-template <SupportedDType T>
+template <SupportedDType DType>
 class Tensor
 {
 private:
+    using T = std::conditional_t<std::is_same_v<DType, bool>, int8_t, DType>;;
     cudaoplib_kernel::Tensor raw;
     bool is_bool_int8_t = false;
 
@@ -37,6 +38,8 @@ private:
     void swap(Tensor<T>& another);
 
 public:
+    template <SupportedDType> friend class Tensor;
+
     // Constructors and deconstructors
 
     Tensor(T* data, const TensorShape& shape, Device device=Device::CPU, bool need_copy=true);
@@ -314,7 +317,10 @@ std::ostream& operator<<(std::ostream& stream, const Tensor<T>& input)
         if constexpr (std::is_same_v<T, float>) stream << "float32";
         else if constexpr (std::is_same_v<T, __half>) stream << "float16";
         else if constexpr (std::is_same_v<T, int>) stream << "int32";
-        else if constexpr (std::is_same_v<T, int8_t>) stream << "int8";
+        else if constexpr (std::is_same_v<T, int8_t>) {
+            if (is_bool) stream << "bool";
+            else stream << "int8";
+        }
         else stream << "UNSUPPORTED DTYPE(" << typeid(T).name() << ")";
         stream << ")" << std::endl;
 

@@ -20,7 +20,7 @@ using Device = cudaoplib_kernel::Device;
 using TensorShape = std::vector<size_t>;
 
 template <typename T>
-concept SupportedDType = std::same_as<T, int> || std::same_as<T, int8_t> || std::same_as<T, float> || std::same_as<T, __half>;
+concept SupportedDType = std::same_as<T, int> || std::same_as<T, int8_t> || std::same_as<T, float> || std::same_as<T, __half> || std::same_as<T, bool>;
 
 template<typename T>
 concept Scalar = !std::ranges::range<T>;
