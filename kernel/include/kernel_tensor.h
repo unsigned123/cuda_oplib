@@ -108,7 +108,7 @@ inline int get_dtype_size(DType dtype)
 Tensor create_empty_cpu_tensor(DType dtype, const std::vector<size_t>& shape);
 Tensor create_empty_gpu_tensor(DType dtype, const std::vector<size_t>& shape);
 Tensor create_cpu_tensor_from_cpu_data(DType dtype, void* data, const std::vector<size_t>& shape, bool copy_from_cpu);
-Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vector<size_t>& shape, bool copy_from_cpu);
+Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vector<size_t>& shape);
 
 Tensor copy_to_cpu_from_cpu(const Tensor& tensor);
 Tensor copy_to_gpu_from_gpu(const Tensor& tensor);
