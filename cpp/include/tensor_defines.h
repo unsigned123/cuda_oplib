@@ -10,6 +10,8 @@
 #include <ranges>
 #include <stdexcept>
 
+#include <iostream>
+
 
 namespace cudaoplib
 {
@@ -30,6 +32,9 @@ concept CUDAFloatingPoint = std::is_floating_point_v<T> || std::is_same_v<T, __h
 
 template <typename T>
 concept ArithmeticType = !std::is_same_v<T, bool>;
+
+template <typename T>
+concept Interger = std::is_same_v<T, int> || std::is_same_v<T, int8_t>;
 
 
 struct _ForceToUseRangeConstructor {};
@@ -52,5 +57,9 @@ namespace _nested_initializer_list
     Tensor(typename cudaoplib::_nested_initializer_list::nested_initializer_list<LogicalDType, N>::type list) : \
         Tensor(list, _ForceToUseRangeConstructor{}) \
     {}
+
+template <SupportedDType LogicalDType> class Tensor;
+template <SupportedDType LogicalDType>
+std::ostream& operator<<(std::ostream& stream, const Tensor<LogicalDType>& input);
 
 } // namespace cudaoplib

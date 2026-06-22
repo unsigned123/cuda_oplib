@@ -1,7 +1,10 @@
 #include <iostream>
+
+#include <gtest/gtest.h>
+
 #include "tensor.h"
 
-int main()
+int original_main()
 {
     using namespace cudaoplib;
     Tensor<int> t1{{1, 2, 3}, {1, 2, 3}};

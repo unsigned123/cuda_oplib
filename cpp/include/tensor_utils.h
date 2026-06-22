@@ -31,6 +31,14 @@ constexpr DType dtype_to_enum([[maybe_unused]] T)
         static_assert(false, "FATAL: cudaoplib::dtype_to_enum failed: Unsupported DType");
 }
 
+inline size_t numel_from_shape(const TensorShape& shape)
+{
+    size_t numel = 1;
+    for (const auto& dim : shape)
+        numel *= dim;
+    return numel;
+}
+
 template<std::ranges::range Range>
 constexpr std::vector<size_t> deduce_shape(const Range& range, bool is_recursive_call=false)
 {

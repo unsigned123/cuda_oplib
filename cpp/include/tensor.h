@@ -27,7 +27,7 @@ template <SupportedDType LogicalDType>
 class Tensor
 {
 private:
-    using InternalDType = std::conditional_t<std::is_same_v<LogicalDType, bool>, int8_t, LogicalDType>;;
+    using InternalDType = std::conditional_t<std::is_same_v<LogicalDType, bool>, int8_t, LogicalDType>;
     cudaoplib_kernel::Tensor raw;
 
     Tensor(cudaoplib_kernel::Tensor _raw) { this->raw = _raw; }
@@ -41,8 +41,8 @@ public:
 
     // Constructors and deconstructors
 
-    Tensor(Tensor<LogicalDType>::InternalDType* data, const TensorShape& shape, Device device=Device::CPU, bool need_copy=true);
-    Tensor(Tensor<LogicalDType>::InternalDType value, Device device=Device::GPU);
+    Tensor(LogicalDType* data, const TensorShape& shape, Device device=Device::CPU, bool need_copy=true, bool take_over=false);
+    Tensor(LogicalDType value, Device device=Device::GPU);
     template<std::ranges::range Range> Tensor(const Range& range, _ForceToUseRangeConstructor dummy={});
     TENSOR_INIALIZER_LIST_CONSTRUCTOR(1)
     TENSOR_INIALIZER_LIST_CONSTRUCTOR(2)
@@ -55,8 +55,6 @@ public:
     Tensor(const Tensor<LogicalDType>& another);
     Tensor(Tensor<LogicalDType>&& another);
     virtual ~Tensor();
-    
-
 
 
     // Tensor transfer
@@ -94,17 +92,32 @@ public:
     Tensor<LogicalDType>& operator=(Tensor<LogicalDType>&& another);
     friend std::ostream& operator<< <LogicalDType>(std::ostream& stream, const Tensor<LogicalDType>& tensor);
     
+    // Type convertion
+    Tensor<float> to_float32() const;
+    Tensor<__half> to_float16() const;
+    Tensor<int> to_int32() const;
+    Tensor<int8_t> to_int8() const;
+    Tensor<bool> to_bool() const;
 
+    explicit operator Tensor<float>() const { return to_float32(); }
+    explicit operator Tensor<__half>() const { return to_float16(); }
+    explicit operator Tensor<int>() const { return to_int32(); }
+    explicit operator Tensor<int8_t>() const { return to_int8(); }
+    explicit operator Tensor<bool>() const { return to_bool(); }
 
     // Simple getters
-
+    TensorShape shape() const { return this->raw.shape; }
+    // bool data is stored in int8_t as 0x00 for false and 0x01 for true, so it is safe to convert int8_t pointer directly to bool pointer
+    const LogicalDType* data() const { return static_cast<const LogicalDType*>(this->raw.data); }
+    LogicalDType* data() { return static_cast<const LogicalDType*>(this->raw.data); }
     Device get_device() const { return this->raw.device; }
     bool owns_data() const { return this->raw.owns_data; }
+    size_t numel() const { return this->raw.numel; }
 };
 
 // Implementations
 template <SupportedDType LogicalDType>
-Tensor<LogicalDType>::Tensor(Tensor<LogicalDType>::InternalDType* data, const TensorShape& shape, Device device, bool need_copy)
+Tensor<LogicalDType>::Tensor(LogicalDType* data, const TensorShape& shape, Device device, bool need_copy, bool take_over)
 {
     for (size_t dim : shape)
     {
@@ -120,10 +133,13 @@ Tensor<LogicalDType>::Tensor(Tensor<LogicalDType>::InternalDType* data, const Te
             throw std::runtime_error("FATAL: cudaoplib::Tensor constructor failed: Copy is required when creating a GPU tensor.");
         this->raw = cudaoplib_kernel::create_gpu_tensor_from_cpu_data(dtype_to_enum(Tensor<LogicalDType>::InternalDType{}), data, shape);
     }
+
+    if (device == Device::CPU && take_over)
+        this->raw.owns_data = true;
 }
 
 template <SupportedDType LogicalDType>
-Tensor<LogicalDType>::Tensor(Tensor<LogicalDType>::InternalDType value, Device device)
+Tensor<LogicalDType>::Tensor(LogicalDType value, Device device)
 {
     Tensor<LogicalDType>::InternalDType* data = new Tensor<LogicalDType>::InternalDType[1];
     data[0] = value;
@@ -144,6 +160,7 @@ Tensor<LogicalDType>::Tensor(const Range& range, [[maybe_unused]] _ForceToUseRan
 {
     auto shape = deduce_shape(range);
     raw = cudaoplib_kernel::create_empty_cpu_tensor(dtype_to_enum(Tensor<LogicalDType>::InternalDType{}), shape);
+    // 0x00(int8_t) for false and 0x01(int8_t) for true, so safe for bool data filling into int8_t buffer
     fill_data(range, static_cast<Tensor<LogicalDType>::InternalDType*>(raw.data));
 }
 
@@ -275,13 +292,74 @@ Tensor<LogicalDType> Tensor<LogicalDType>::to_device(Device device) const
         throw std::runtime_error("FATAL: cudaoplib::Tensor::to_device: Invalid destination: the same as the source.");
     
     if (device == Device::CPU)
-    {
         return Tensor<LogicalDType>(cudaoplib_kernel::copy_to_cpu_from_gpu(this->raw));
-    }
     else
-    {
         return Tensor<LogicalDType>(cudaoplib_kernel::copy_to_gpu_from_cpu(this->raw));
+}
+
+template <SupportedDType LogicalDType>
+Tensor<float> Tensor<LogicalDType>::to_float32() const
+{
+    if (device == Device::CPU)
+    {
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Float32, this->raw.shape);
+        for (size_t i = 0;i < this->raw.numel;i++)
+            static_cast<float*>(new_raw.data)[i] = static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i];
+        return Tensor<float>(new_raw);
     }
+    else throw std::runtime_error("Type conversion on gpu not implemented yet.");
+}
+
+template <SupportedDType LogicalDType>
+Tensor<__half> Tensor<LogicalDType>::to_float16() const
+{
+    if (device == Device::CPU)
+    {
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Float16, this->raw.shape);
+        for (size_t i = 0;i < this->raw.numel;i++)
+            static_cast<__half*>(new_raw.data)[i] = static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i];
+        return Tensor<__half>(new_raw);
+    }
+    else throw std::runtime_error("Type conversion on gpu not implemented yet.");
+}
+
+template <SupportedDType LogicalDType>
+Tensor<int> Tensor<LogicalDType>::to_int32() const
+{
+    if (device == Device::CPU)
+    {
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int32, this->raw.shape);
+        for (size_t i = 0;i < this->raw.numel;i++)
+            static_cast<int*>(new_raw.data)[i] = static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i];
+        return Tensor<int>(new_raw);
+    }
+    else throw std::runtime_error("Type conversion on gpu not implemented yet.");
+}
+
+template <SupportedDType LogicalDType>
+Tensor<int8_t> Tensor<LogicalDType>::to_int8() const
+{
+    if (device == Device::CPU)
+    {
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int8, this->raw.shape);
+        for (size_t i = 0;i < this->raw.numel;i++)
+            static_cast<int8_t*>(new_raw.data)[i] = static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i];
+        return Tensor<int8_t>(new_raw);
+    }
+    else throw std::runtime_error("Type conversion on gpu not implemented yet.");
+}
+
+template <SupportedDType LogicalDType>
+Tensor<bool> Tensor<LogicalDType>::to_bool() const
+{
+    if (device == Device::CPU)
+    {
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int8, this->raw.shape);
+        for (size_t i = 0;i < this->raw.numel;i++)
+            static_cast<bool*>(new_raw.data)[i] = (bool)(static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i]);
+        return Tensor<bool>(new_raw);
+    }
+    else throw std::runtime_error("Type conversion on gpu not implemented yet.");
 }
 
 template <SupportedDType LogicalDType>
@@ -315,6 +393,8 @@ std::ostream& operator<<(std::ostream& stream, const Tensor<LogicalDType>& input
         else if constexpr (std::is_same_v<LogicalDType, int8_t>) stream << "int8";
         else if constexpr (std::is_same_v<LogicalDType, bool>) stream << "bool";
         else stream << "UNSUPPORTED DTYPE(" << typeid(LogicalDType).name() << ")";
+
+        stream << ", device=" << (input.raw.device == Device::CPU ? "\"CPU\"" : "\"GPU\"");
         stream << ")" << std::endl;
 
         auto print_recursive = [&](this auto self, size_t current_dim, size_t offset, int indent = 0) {

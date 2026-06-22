@@ -7,10 +7,10 @@ set(KERNEL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 file(GLOB_RECURSE KERNEL_SOURCE_FILES "${KERNEL_SOURCE_DIR}/*.c" "${KERNEL_SOURCE_DIR}/*.cpp" "${KERNEL_SOURCE_DIR}/*.cc" "${KERNEL_SOURCE_DIR}/*.cxx" "${KERNEL_SOURCE_DIR}/*.cu")
 
 
-add_library(cudaoplib_kernel STATIC "${KERNEL_SOURCE_FILES}")
+add_library(cudaoplib_kernel STATIC ${KERNEL_SOURCE_FILES})
 
 set(KERNEL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_include_directories(cudaoplib_kernel PRIVATE "${KERNEL_INCLUDE_DIR}")
+target_include_directories(cudaoplib_kernel PRIVATE ${KERNEL_INCLUDE_DIR})
 
 target_compile_options(cudaoplib_kernel PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror>
