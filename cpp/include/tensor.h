@@ -31,12 +31,12 @@ private:
     cudaoplib_kernel::Tensor raw;
 
     Tensor(cudaoplib_kernel::Tensor _raw) { this->raw = _raw; }
-    TensorShape binary_broadcast(const TensorShape& another_shape) const;
     Device binary_device(Device another_device) const;
-    
+
     void swap(Tensor<LogicalDType>& another);
 
 public:
+    TensorShape binary_broadcast(const TensorShape& another_shape) const;
     template <SupportedDType> friend class Tensor;
 
     // Constructors and deconstructors
