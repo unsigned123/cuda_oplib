@@ -158,10 +158,16 @@ def write_error(msg: str) -> None:
 
 # ── operation dispatcher ──────────────────────────────────────
 
-def dispatch(op: str, tensors: list[torch.Tensor]) -> torch.Tensor:
-    """Run a torch operation on GPU and return the CPU result."""
-    # Move to GPU
-    gpu_tensors = [t.to("cuda") for t in tensors]
+def dispatch(op: str, tensors: list[torch.Tensor],
+             gpu_only: bool = False, sync: bool = False) -> torch.Tensor:
+    """Run a torch operation on GPU.
+    If gpu_only=True, tensors are already on GPU and result stays on GPU.
+    If sync=True, synchronize after compute.
+    """
+    if gpu_only:
+        gpu_tensors = tensors
+    else:
+        gpu_tensors = [t.to("cuda") for t in tensors]
 
     if op == "add":
         result = torch.add(gpu_tensors[0], gpu_tensors[1])
@@ -196,7 +202,10 @@ def dispatch(op: str, tensors: list[torch.Tensor]) -> torch.Tensor:
     else:
         raise ValueError(f"Unknown op: {op}")
 
-    # Synchronize and time
+    if sync:
+        torch.cuda.synchronize()
+    if gpu_only:
+        return result
     torch.cuda.synchronize()
     return result.cpu()
 
@@ -212,17 +221,22 @@ def main():
         try:
             # ── read request header ──
             op_line = read_line()
+            repeat_line = read_line()
             ntensors_line = read_line()
             blank = read_line()
 
             if not op_line.startswith("OP:"):
                 write_error(f"Expected OP:, got {op_line}")
                 continue
+            if not repeat_line.startswith("REPEAT:"):
+                write_error(f"Expected REPEAT:, got {repeat_line}")
+                continue
             if not ntensors_line.startswith("NTENSORS:"):
                 write_error(f"Expected NTENSORS:, got {ntensors_line}")
                 continue
 
             op_name  = op_line[3:]
+            repeat   = int(repeat_line[7:])
             ntensors = int(ntensors_line[9:])
 
             # ── read tensors ──
@@ -230,11 +244,22 @@ def main():
             for _ in range(ntensors):
                 tensors.append(read_one_tensor())
 
-            # ── compute ──
-            t0 = time.perf_counter()
-            result = dispatch(op_name, tensors)
-            t1 = time.perf_counter()
-            time_us = int((t1 - t0) * 1_000_000)
+            # ── compute (repeat N times, accumulate time, return last result) ──
+            # Move to GPU once (outside timing loop)
+            gpu_tensors = [t.to("cuda") for t in tensors]
+            # Warm up once
+            dispatch(op_name, gpu_tensors, gpu_only=True, sync=True)
+            # Timed loop
+            time_us = 0
+            result = None
+            for _ in range(repeat):
+                torch.cuda.synchronize()
+                t0 = time.perf_counter()
+                result = dispatch(op_name, gpu_tensors, gpu_only=True)
+                torch.cuda.synchronize()
+                t1 = time.perf_counter()
+                time_us += int((t1 - t0) * 1_000_000)
+            result = result.cpu()  # move back to CPU once
 
             # ── write response ──
             write_one_tensor(result, time_us)

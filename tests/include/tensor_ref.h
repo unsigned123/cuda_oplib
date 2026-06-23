@@ -88,7 +88,8 @@ public:
 
     // Send an operation request. Returns false on pipe error.
     bool send(const std::string& op_name,
-              const std::vector<cudaoplib_kernel::Tensor>& tensors);
+              const std::vector<cudaoplib_kernel::Tensor>& tensors,
+              int repeat = 1);
 
     // Receive the result. Returns TorchRefResult on success,
     // error message string on failure.
@@ -176,6 +177,9 @@ public:
 
     // Elapsed time of the last op (microseconds)
     uint64_t last_time_us() const { return last_time_us_; }
+    // Set repeat count for benchmark timing (default 1)
+    void set_repeat(int n) { repeat_ = n; }
+    int  get_repeat() const { return repeat_; }
 
 private:
     TorchRef();
@@ -183,6 +187,7 @@ private:
 
     std::unique_ptr<TorchPipe> pipe_;
     uint64_t last_time_us_ = 0;
+    int repeat_ = 1;
 
     template <cudaoplib::SupportedDType T>
     cudaoplib::Tensor<T> _run_binary(const std::string& op,
