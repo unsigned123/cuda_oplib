@@ -36,6 +36,7 @@ do                                                    \
         case cudaoplib_kernel::DType::Float16: func(__half{}, ##__VA_ARGS__); break;   \
         case cudaoplib_kernel::DType::Int32:   func(int{}, ##__VA_ARGS__); break;      \
         case cudaoplib_kernel::DType::Int8:    func(int8_t{}, ##__VA_ARGS__); break;   \
+        case cudaoplib_kernel::DType::Bool:    func(bool{}, ##__VA_ARGS__); break;      \
         default: throw std::runtime_error("FATAL: DISPATCH_DTYPE failed during kernel launching: Unsupported dtype"); }
 
 //

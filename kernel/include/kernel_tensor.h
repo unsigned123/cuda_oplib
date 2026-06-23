@@ -17,7 +17,8 @@ enum class DType
     Float32,
     Float16,
     Int32,
-    Int8
+    Int8,
+    Bool
 };
 
 enum class Device
@@ -100,6 +101,7 @@ inline int get_dtype_size(DType dtype)
         case DType::Float16: size = sizeof(__half); break;
         case DType::Int32: size = sizeof(int); break;
         case DType::Int8: size = sizeof(int8_t); break;
+        case DType::Bool: size = sizeof(bool); break;
         default: throw std::runtime_error("FATAL: cudaoplib_kernel::create_cpu_tensor_copy failed : Unsupported dtype"); break;
     }
     return size;

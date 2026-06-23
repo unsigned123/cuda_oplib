@@ -13,5 +13,8 @@ namespace cudaoplib
     }
 
     uint32_t get_global_seed() { return _global_seed; }
-    void set_global_seed(uint32_t seed) { _global_seed = seed; }
+    void set_global_seed(uint32_t seed) { 
+        _global_seed = seed; 
+        get_random_engine().seed(seed); 
+    }
 }; // namespace cudaoplib

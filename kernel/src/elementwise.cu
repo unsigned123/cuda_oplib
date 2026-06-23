@@ -173,7 +173,7 @@ template<typename T> __global__ void remainder_kernel(
 template<typename T> __global__ void eq_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -199,7 +199,7 @@ template<typename T> __global__ void eq_kernel(
 template<typename T> __global__ void neq_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -225,7 +225,7 @@ template<typename T> __global__ void neq_kernel(
 template<typename T> __global__ void lt_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -251,7 +251,7 @@ template<typename T> __global__ void lt_kernel(
 template<typename T> __global__ void le_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -277,7 +277,7 @@ template<typename T> __global__ void le_kernel(
 template<typename T> __global__ void gt_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -303,7 +303,7 @@ template<typename T> __global__ void gt_kernel(
 template<typename T> __global__ void ge_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -329,7 +329,7 @@ template<typename T> __global__ void ge_kernel(
 template<typename T> __global__ void logical_and_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -355,7 +355,7 @@ template<typename T> __global__ void logical_and_kernel(
 template<typename T> __global__ void logical_or_kernel(
     const T* __restrict__ a,
     const T* __restrict__ b,
-    int8_t* __restrict__ out,
+    bool* __restrict__ out,
     size_t N,
     TensorStride a_strides,
     TensorStride b_strides,
@@ -606,7 +606,7 @@ void eq(const Tensor& a, const Tensor& b, Tensor& out)
         eq_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -628,7 +628,7 @@ void neq(const Tensor& a, const Tensor& b, Tensor& out)
         neq_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -651,7 +651,7 @@ void lt(const Tensor& a, const Tensor& b, Tensor& out)
         lt_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -674,7 +674,7 @@ void le(const Tensor& a, const Tensor& b, Tensor& out)
         le_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -697,7 +697,7 @@ void gt(const Tensor& a, const Tensor& b, Tensor& out)
         gt_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -719,7 +719,7 @@ void ge(const Tensor& a, const Tensor& b, Tensor& out)
         ge_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -741,7 +741,7 @@ void logical_and(const Tensor& a, const Tensor& b, Tensor& out)
         logical_and_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),
@@ -763,7 +763,7 @@ void logical_or(const Tensor& a, const Tensor& b, Tensor& out)
         logical_or_kernel<<<grid_size, block_size>>>(
             static_cast<T*>(a.data),
             static_cast<T*>(b.data),
-            static_cast<int8_t*>(out.data),
+            static_cast<bool*>(out.data),
             out.numel,
             a.get_stride(),
             b.get_stride(),

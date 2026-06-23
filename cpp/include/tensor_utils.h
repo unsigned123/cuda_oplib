@@ -27,6 +27,8 @@ constexpr DType dtype_to_enum([[maybe_unused]] T)
         return DType::Int32;
     else if constexpr (std::is_same_v<T, int8_t>)
         return DType::Int8;
+    else if constexpr (std::is_same_v<T, bool>)
+        return DType::Bool;
     else
         static_assert(false, "FATAL: cudaoplib::dtype_to_enum failed: Unsupported DType");
 }
