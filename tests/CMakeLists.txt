@@ -23,6 +23,10 @@ target_include_directories(cudaoplib_test PRIVATE ${TEST_INCLUDE_DIR})
 include(GoogleTest)
 gtest_discover_tests(cudaoplib_test)
 
+target_compile_definitions(cudaoplib_test PRIVATE
+    TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 
 
 target_compile_options(cudaoplib_test PRIVATE

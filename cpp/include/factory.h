@@ -1,7 +1,7 @@
 #pragma once
 
 #include "tensor.h"
-#include "random.h"
+#include "rng.h"
 
 #include <random>
 
@@ -41,10 +41,18 @@ Tensor<LogicalDType> ones(const TensorShape& shape, Device device=Device::CPU)
 template <CUDAFloatingPoint LogicalDType = float>
 Tensor<LogicalDType> rand(const TensorShape& shape, Device device=Device::CPU)
 {
-    std::uniform_real_distribution<LogicalDType> dist(0.0, 1.0);
     size_t numel = numel_from_shape(shape), size = sizeof(LogicalDType) * numel;
     LogicalDType* buffer = static_cast<LogicalDType*>(operator new(size));
-    for (size_t i = 0;i < numel;i++) buffer[i] = dist(get_random_engine());
+    if constexpr (std::is_same_v<LogicalDType, __half>)
+    {
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        for (size_t i = 0;i < numel;i++) buffer[i] = __float2half(dist(get_random_engine()));
+    }
+    else
+    {
+        std::uniform_real_distribution<LogicalDType> dist(0.0, 1.0);
+        for (size_t i = 0;i < numel;i++) buffer[i] = dist(get_random_engine());
+    }
 
     Tensor<LogicalDType> ret = Tensor<LogicalDType>(buffer, shape, device, false, true);
     if (device != Device::CPU)
@@ -55,10 +63,18 @@ Tensor<LogicalDType> rand(const TensorShape& shape, Device device=Device::CPU)
 template <CUDAFloatingPoint LogicalDType = float>
 Tensor<LogicalDType> randn(const TensorShape& shape, Device device=Device::CPU)
 {
-    std::normal_distribution<LogicalDType> dist(0.0, 1.0);
     size_t numel = numel_from_shape(shape), size = sizeof(LogicalDType) * numel;
     LogicalDType* buffer = static_cast<LogicalDType*>(operator new(size));
-    for (size_t i = 0;i < numel;i++) buffer[i] = dist(get_random_engine());
+    if constexpr (std::is_same_v<LogicalDType, __half>)
+    {
+        std::normal_distribution<float> dist(0.0f, 1.0f);
+        for (size_t i = 0;i < numel;i++) buffer[i] = __float2half(dist(get_random_engine()));
+    }
+    else
+    {
+        std::normal_distribution<LogicalDType> dist(0.0, 1.0);
+        for (size_t i = 0;i < numel;i++) buffer[i] = dist(get_random_engine());
+    }
 
     Tensor<LogicalDType> ret = Tensor<LogicalDType>(buffer, shape, device, false, true);
     if (device != Device::CPU)

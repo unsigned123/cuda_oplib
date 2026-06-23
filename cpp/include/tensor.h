@@ -27,7 +27,7 @@ template <SupportedDType LogicalDType>
 class Tensor
 {
 private:
-    using InternalDType = std::conditional_t<std::is_same_v<LogicalDType, bool>, int8_t, LogicalDType>;
+    using InternalDType = LogicalDType;
     cudaoplib_kernel::Tensor raw;
 
     Tensor(cudaoplib_kernel::Tensor _raw) { this->raw = _raw; }
@@ -107,12 +107,12 @@ public:
 
     // Simple getters
     TensorShape shape() const { return this->raw.shape; }
-    // bool data is stored in int8_t as 0x00 for false and 0x01 for true, so it is safe to convert int8_t pointer directly to bool pointer
     const LogicalDType* data() const { return static_cast<const LogicalDType*>(this->raw.data); }
-    LogicalDType* data() { return static_cast<const LogicalDType*>(this->raw.data); }
+    LogicalDType* data() { return static_cast<LogicalDType*>(this->raw.data); }
     Device get_device() const { return this->raw.device; }
     bool owns_data() const { return this->raw.owns_data; }
     size_t numel() const { return this->raw.numel; }
+    cudaoplib_kernel::Tensor get_raw() const { return this->raw; }
 };
 
 // Implementations
@@ -141,7 +141,7 @@ Tensor<LogicalDType>::Tensor(LogicalDType* data, const TensorShape& shape, Devic
 template <SupportedDType LogicalDType>
 Tensor<LogicalDType>::Tensor(LogicalDType value, Device device)
 {
-    Tensor<LogicalDType>::InternalDType* data = new Tensor<LogicalDType>::InternalDType[1];
+    LogicalDType* data = new LogicalDType[1];
     data[0] = value;
 
     if (device == Device::CPU)
@@ -160,8 +160,7 @@ Tensor<LogicalDType>::Tensor(const Range& range, [[maybe_unused]] _ForceToUseRan
 {
     auto shape = deduce_shape(range);
     raw = cudaoplib_kernel::create_empty_cpu_tensor(dtype_to_enum(Tensor<LogicalDType>::InternalDType{}), shape);
-    // 0x00(int8_t) for false and 0x01(int8_t) for true, so safe for bool data filling into int8_t buffer
-    fill_data(range, static_cast<Tensor<LogicalDType>::InternalDType*>(raw.data));
+    fill_data(range, static_cast<LogicalDType*>(raw.data));
 }
 
 template <SupportedDType LogicalDType>
@@ -300,7 +299,7 @@ Tensor<LogicalDType> Tensor<LogicalDType>::to_device(Device device) const
 template <SupportedDType LogicalDType>
 Tensor<float> Tensor<LogicalDType>::to_float32() const
 {
-    if (device == Device::CPU)
+    if (Device::CPU == this->raw.device)
     {
         cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Float32, this->raw.shape);
         for (size_t i = 0;i < this->raw.numel;i++)
@@ -313,7 +312,7 @@ Tensor<float> Tensor<LogicalDType>::to_float32() const
 template <SupportedDType LogicalDType>
 Tensor<__half> Tensor<LogicalDType>::to_float16() const
 {
-    if (device == Device::CPU)
+    if (Device::CPU == this->raw.device)
     {
         cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Float16, this->raw.shape);
         for (size_t i = 0;i < this->raw.numel;i++)
@@ -326,7 +325,7 @@ Tensor<__half> Tensor<LogicalDType>::to_float16() const
 template <SupportedDType LogicalDType>
 Tensor<int> Tensor<LogicalDType>::to_int32() const
 {
-    if (device == Device::CPU)
+    if (Device::CPU == this->raw.device)
     {
         cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int32, this->raw.shape);
         for (size_t i = 0;i < this->raw.numel;i++)
@@ -339,7 +338,7 @@ Tensor<int> Tensor<LogicalDType>::to_int32() const
 template <SupportedDType LogicalDType>
 Tensor<int8_t> Tensor<LogicalDType>::to_int8() const
 {
-    if (device == Device::CPU)
+    if (Device::CPU == this->raw.device)
     {
         cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int8, this->raw.shape);
         for (size_t i = 0;i < this->raw.numel;i++)
@@ -352,9 +351,9 @@ Tensor<int8_t> Tensor<LogicalDType>::to_int8() const
 template <SupportedDType LogicalDType>
 Tensor<bool> Tensor<LogicalDType>::to_bool() const
 {
-    if (device == Device::CPU)
+    if (Device::CPU == this->raw.device)
     {
-        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Int8, this->raw.shape);
+        cudaoplib_kernel::Tensor new_raw = cudaoplib_kernel::create_empty_cpu_tensor(DType::Bool, this->raw.shape);
         for (size_t i = 0;i < this->raw.numel;i++)
             static_cast<bool*>(new_raw.data)[i] = (bool)(static_cast<const Tensor<LogicalDType>::InternalDType*>(this->raw.data)[i]);
         return Tensor<bool>(new_raw);
@@ -411,7 +410,7 @@ std::ostream& operator<<(std::ostream& stream, const Tensor<LogicalDType>& input
                         stream << std::setw(FIXED_WIDTH) << static_cast<int>(static_cast<LogicalDType*>(tensor.raw.data)[index]);
                     }
                     else if constexpr (std::is_same_v<LogicalDType, bool>) {
-                        stream << std::setw(FIXED_WIDTH) << ((static_cast<int8_t*>(tensor.raw.data))[index] ? "true" : "false");
+                        stream << std::setw(FIXED_WIDTH) << ((static_cast<bool*>(tensor.raw.data))[index] ? "true" : "false");
                     }
                     else if constexpr (requires { requires CUDAFloatingPoint<LogicalDType>; }) {
                         stream << std::fixed << std::setprecision(PRECISION) << std::setw(FIXED_WIDTH)
@@ -531,7 +530,7 @@ Tensor<bool> Tensor<LogicalDType>::operator==(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::eq(this->raw, another.raw, result_raw);
     return Tensor<bool>(result_raw);
@@ -545,7 +544,7 @@ Tensor<bool> Tensor<LogicalDType>::operator!=(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::neq(this->raw, another.raw, result_raw);
     
@@ -560,7 +559,7 @@ Tensor<bool> Tensor<LogicalDType>::operator<(const Tensor<LogicalDType>& another
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::lt(this->raw, another.raw, result_raw);
     
@@ -575,7 +574,7 @@ Tensor<bool> Tensor<LogicalDType>::operator<=(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::le(this->raw, another.raw, result_raw);
     
@@ -590,7 +589,7 @@ Tensor<bool> Tensor<LogicalDType>::operator>(const Tensor<LogicalDType>& another
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::gt(this->raw, another.raw, result_raw);
     
@@ -605,7 +604,7 @@ Tensor<bool> Tensor<LogicalDType>::operator>=(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::ge(this->raw, another.raw, result_raw);
     
@@ -620,7 +619,7 @@ Tensor<bool> Tensor<LogicalDType>::operator&&(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::logical_and(this->raw, another.raw, result_raw);
     
@@ -635,7 +634,7 @@ Tensor<bool> Tensor<LogicalDType>::operator||(const Tensor<LogicalDType>& anothe
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
 
     TensorShape shape = binary_broadcast(another.raw.shape);
-    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Int8, shape);
+    cudaoplib_kernel::Tensor result_raw = cudaoplib_kernel::create_empty_gpu_tensor(DType::Bool, shape);
 
     cudaoplib_kernel::logical_or(this->raw, another.raw, result_raw);
     
