@@ -26,4 +26,4 @@ void maximum(const Tensor& a, const Tensor& b, Tensor& out);
 void minimum(const Tensor& a, const Tensor& b, Tensor& out);
 
 
-}; // namespace cudaoplib_kernel
+} // namespace cudaoplib_kernel

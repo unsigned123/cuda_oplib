@@ -12,30 +12,22 @@ Tensor create_empty_cpu_tensor(DType dtype, const std::vector<size_t>& shape)
 {
     int size = get_dtype_size(dtype);
 
-    int numel = 0, cumulated = 1;
-    std::vector<int64_t> stride;
-    stride.resize(shape.size(), 1);
+    int numel = 0;
+    Tensor tensor;
     
-    for (int i = shape.size() - 1;i >= 0;i--)
-    {
-        stride[i] = cumulated;
-        cumulated *= shape[i];
-    }
-    numel = cumulated;
+    numel = calc_stride_and_numel(tensor.stride, shape);
 
     void* tensor_buffer = nullptr;
     
     tensor_buffer = operator new(numel * size);
     memset(tensor_buffer, 0, numel * size);
 
-    Tensor tensor;
     tensor.data = tensor_buffer;
     tensor.device = Device::CPU;
     tensor.dtype = dtype;
     tensor.numel = numel;
     tensor.owns_data = true;
     tensor.shape = shape;
-    tensor.stride = stride;
     tensor.is_contiguous = true;
 
     return tensor;
@@ -44,30 +36,22 @@ Tensor create_empty_cpu_tensor(DType dtype, const std::vector<size_t>& shape)
 Tensor create_empty_gpu_tensor(DType dtype, const std::vector<size_t>& shape)
 {
     int size = get_dtype_size(dtype);
+    Tensor tensor;
 
-    int numel = 0, cumulated = 1;
-    std::vector<int64_t> stride;
-    stride.resize(shape.size(), 1);
-    
-    for (int i = shape.size() - 1;i >= 0;i--)
-    {
-        stride[i] = cumulated;
-        cumulated *= shape[i];
-    }
-    numel = cumulated;
+    int numel = 0;
+
+    numel = calc_stride_and_numel(tensor.stride, shape);
 
     void* tensor_buffer = nullptr;
     
     CUDA_CHECK(cudaMalloc(&tensor_buffer, size * numel));
 
-    Tensor tensor;
     tensor.data = tensor_buffer;
     tensor.device = Device::GPU;
     tensor.dtype = dtype;
     tensor.numel = numel;
     tensor.owns_data = true;
     tensor.shape = shape;
-    tensor.stride = stride;
     tensor.is_contiguous = true;
 
     return tensor;
@@ -77,16 +61,10 @@ Tensor create_cpu_tensor_from_cpu_data(DType dtype, void* data, const std::vecto
 {
     int size = get_dtype_size(dtype);
 
-    int numel = 0, cumulated = 1;
-    std::vector<int64_t> stride;
-    stride.resize(shape.size(), 1);
+    int numel = 0;
+    Tensor tensor;
     
-    for (int i = shape.size() - 1;i >= 0;i--)
-    {
-        stride[i] = cumulated;
-        cumulated *= shape[i];
-    }
-    numel = cumulated;
+    numel = calc_stride_and_numel(tensor.stride, shape);
 
     void* tensor_buffer = nullptr;
     
@@ -99,14 +77,12 @@ Tensor create_cpu_tensor_from_cpu_data(DType dtype, void* data, const std::vecto
     else
         tensor_buffer = data;
 
-    Tensor tensor;
     tensor.data = tensor_buffer;
     tensor.device = Device::CPU;
     tensor.dtype = dtype;
     tensor.numel = numel;
     tensor.owns_data = copy_from_cpu;
     tensor.shape = shape;
-    tensor.stride = stride;
     tensor.is_contiguous = true;
 
     return tensor;
@@ -117,20 +93,39 @@ Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vecto
     int size = get_dtype_size(dtype);
 
     int numel = 0, cumulated = 1;
-    std::vector<int64_t> stride;
-    stride.resize(shape.size(), 1);
-    
-    for (int i = shape.size() - 1;i >= 0;i--)
-    {
-        stride[i] = cumulated;
-        cumulated *= shape[i];
-    }
-    numel = cumulated;
+    Tensor tensor;
+
+    numel = calc_stride_and_numel(tensor.stride, shape);
 
     void* tensor_buffer = nullptr;
 
     CUDA_CHECK(cudaMalloc(&tensor_buffer, size * numel));
     CUDA_CHECK(cudaMemcpy(tensor_buffer, data, size * numel, cudaMemcpyKind::cudaMemcpyHostToDevice));
+
+    tensor.data = tensor_buffer;
+    tensor.device = Device::GPU;
+    tensor.dtype = dtype;
+    tensor.numel = numel;
+    tensor.owns_data = true;
+    tensor.shape = shape;
+    tensor.is_contiguous = true;
+
+    return tensor;
+}
+
+Tensor create_gpu_tensor_from_gpu_data(DType dtype, void* data, const std::vector<size_t>& shape)
+{
+    int size = get_dtype_size(dtype);
+
+    int numel = 0;
+    Tensor tensor;
+    
+    numel = calc_stride_and_numel(tensor.stride, shape);
+
+    void* tensor_buffer = nullptr;
+
+    CUDA_CHECK(cudaMalloc(&tensor_buffer, size * numel));
+    CUDA_CHECK(cudaMemcpy(tensor_buffer, data, size * numel, cudaMemcpyKind::cudaMemcpyDeviceToDevice));
 
     Tensor tensor;
     tensor.data = tensor_buffer;
@@ -139,7 +134,6 @@ Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vecto
     tensor.numel = numel;
     tensor.owns_data = true;
     tensor.shape = shape;
-    tensor.stride = stride;
     tensor.is_contiguous = true;
 
     return tensor;

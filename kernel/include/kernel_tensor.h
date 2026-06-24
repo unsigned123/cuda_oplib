@@ -107,12 +107,27 @@ inline int get_dtype_size(DType dtype)
     return size;
 }
 
+inline size_t calc_stride_and_numel(std::vector<int64_t>& stride, const std::vector<size_t>& shape)
+{
+    stride.resize(shape.size(), 1);
+    
+    size_t cumulated = 1, numel = 0;
+    for (int i = shape.size() - 1;i >= 0;i--)
+    {
+        stride[i] = cumulated;
+        cumulated *= shape[i];
+    }
+    numel = cumulated;
+
+    return numel;
+}
 
 // Tensor Management
 Tensor create_empty_cpu_tensor(DType dtype, const std::vector<size_t>& shape);
 Tensor create_empty_gpu_tensor(DType dtype, const std::vector<size_t>& shape);
 Tensor create_cpu_tensor_from_cpu_data(DType dtype, void* data, const std::vector<size_t>& shape, bool copy_from_cpu);
 Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vector<size_t>& shape);
+Tensor create_gpu_tensor_from_gpu_data(DType dtype, void* data, const std::vector<size_t>& shape);
 
 Tensor copy_to_cpu_from_cpu(const Tensor& tensor);
 Tensor copy_to_gpu_from_gpu(const Tensor& tensor);
@@ -123,4 +138,4 @@ Tensor copy_to_gpu_from_cpu(const Tensor& tensor);
 void free_gpu_tensor(Tensor& tensor);
 void free_cpu_tensor(Tensor& tensor);
 
-}; // namespace cudaoplib_kernel
+} // namespace cudaoplib_kernel

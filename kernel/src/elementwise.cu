@@ -456,6 +456,55 @@ template<typename T> __global__ void minimum_kernel(
     out[tid] = (a[offset_a] < b[offset_b]) ? a[offset_a] : b[offset_b];
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// wrappers
+
+
 void add(const Tensor& a, const Tensor& b, Tensor& out)
 {
     CHECK_GPU(a); CHECK_GPU(b); CHECK_GPU(out);
@@ -841,4 +890,4 @@ void minimum(const Tensor& a, const Tensor& b, Tensor& out)
 }
 
 
-}; // namespace cudaoplib_kernel
+} // namespace cudaoplib_kernel
