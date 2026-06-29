@@ -89,7 +89,7 @@ public:
     // Send an operation request. Returns false on pipe error.
     bool send(const std::string& op_name,
               const std::vector<cudaoplib_kernel::Tensor>& tensors,
-              int repeat = 1);
+              int repeat = 1, int dim = -1);
 
     // Receive the result. Returns TorchRefResult on success,
     // error message string on failure.
@@ -131,7 +131,8 @@ public:
     // Low-level: send raw kernel tensors, receive result
     std::expected<TorchRefResult, std::string>
     run_op(const std::string& op_name,
-           const std::vector<cudaoplib_kernel::Tensor>& tensors);
+           const std::vector<cudaoplib_kernel::Tensor>& tensors,
+           int dim = -1);
 
     // High-level: per-operator, type-safe, returns Tensor<T>
     template <cudaoplib::SupportedDType T>
@@ -174,6 +175,9 @@ public:
     template <cudaoplib::SupportedDType T>
     cudaoplib::Tensor<bool> logical_or(const cudaoplib::Tensor<T>& a,
                                         const cudaoplib::Tensor<T>& b);
+
+    template <cudaoplib::SupportedDType T>
+    cudaoplib::Tensor<T> sum(const cudaoplib::Tensor<T>& a, int dim);
 
     // Elapsed time of the last op (microseconds)
     uint64_t last_time_us() const { return last_time_us_; }

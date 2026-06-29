@@ -45,6 +45,7 @@ Tensor create_empty_gpu_tensor(DType dtype, const std::vector<size_t>& shape)
     void* tensor_buffer = nullptr;
     
     CUDA_CHECK(cudaMalloc(&tensor_buffer, size * numel));
+    CUDA_CHECK(cudaMemset(tensor_buffer, 0, size * numel));
 
     tensor.data = tensor_buffer;
     tensor.device = Device::GPU;
@@ -92,7 +93,7 @@ Tensor create_gpu_tensor_from_cpu_data(DType dtype, void* data, const std::vecto
 {
     int size = get_dtype_size(dtype);
 
-    int numel = 0, cumulated = 1;
+    int numel = 0;
     Tensor tensor;
 
     numel = calc_stride_and_numel(tensor.stride, shape);
@@ -127,7 +128,6 @@ Tensor create_gpu_tensor_from_gpu_data(DType dtype, void* data, const std::vecto
     CUDA_CHECK(cudaMalloc(&tensor_buffer, size * numel));
     CUDA_CHECK(cudaMemcpy(tensor_buffer, data, size * numel, cudaMemcpyKind::cudaMemcpyDeviceToDevice));
 
-    Tensor tensor;
     tensor.data = tensor_buffer;
     tensor.device = Device::GPU;
     tensor.dtype = dtype;

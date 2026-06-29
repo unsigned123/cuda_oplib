@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 find_package(CUDAToolkit REQUIRED)
 
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --use_fast_math")
 set(KERNEL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 file(GLOB_RECURSE KERNEL_SOURCE_FILES "${KERNEL_SOURCE_DIR}/*.c" "${KERNEL_SOURCE_DIR}/*.cpp" "${KERNEL_SOURCE_DIR}/*.cc" "${KERNEL_SOURCE_DIR}/*.cxx" "${KERNEL_SOURCE_DIR}/*.cu")

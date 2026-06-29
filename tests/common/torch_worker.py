@@ -158,7 +158,7 @@ def write_error(msg: str) -> None:
 
 # ── operation resolver (called ONCE — no string compare in hot path) ──
 
-def _resolve_op(op: str, dtype: torch.dtype):
+def _resolve_op(op: str, dtype: torch.dtype, dim: int = -1):
     """Return a callable fn(a, b) -> Tensor for the given op+dtype.
     Resolves 'div' → trunc for int types. All other ops are direct torch calls."""
     if op == "add":        return torch.add
@@ -175,6 +175,7 @@ def _resolve_op(op: str, dtype: torch.dtype):
     if op == "le":         return torch.le
     if op == "gt":         return torch.gt
     if op == "ge":         return torch.ge
+    if op == "sum":        return lambda a, _: torch.sum(a, dim=dim)
     if op == "logical_and": return torch.logical_and
     if op == "logical_or":  return torch.logical_or
     raise ValueError(f"Unknown op: {op}")
@@ -192,7 +193,16 @@ def main():
             # ── read request header ──
             op_line = read_line()
             repeat_line = read_line()
-            ntensors_line = read_line()
+            next_line = read_line()  # DIM (optional) or NTENSORS
+
+            # optional DIM field
+            dim = -1
+            if next_line.startswith("DIM:"):
+                dim = int(next_line[4:])
+                ntensors_line = read_line()
+            else:
+                ntensors_line = next_line
+
             blank = read_line()
 
             if not op_line.startswith("OP:"):
@@ -216,7 +226,7 @@ def main():
 
             # ── resolve op ONCE (no string compare in hot path) ──
             dtype = tensors[0].dtype
-            op_fn = _resolve_op(op_name, dtype)
+            op_fn = _resolve_op(op_name, dtype, dim)
 
             # Move to GPU once
             gpu_a = tensors[0].to("cuda")
@@ -226,22 +236,23 @@ def main():
             if gpu_b is not None:
                 op_fn(gpu_a, gpu_b)
             else:
-                op_fn(gpu_a)
+                op_fn(gpu_a, None)
             torch.cuda.synchronize()
 
-            # Timed loop
+            # Timed loop (CUDA events — consistent with cudaoplib's CUDA event timing)
+            start_ev = torch.cuda.Event(enable_timing=True)
+            end_ev   = torch.cuda.Event(enable_timing=True)
             time_us = 0
             result = None
             for _ in range(repeat):
-                torch.cuda.synchronize()
-                t0 = time.perf_counter()
+                start_ev.record()
                 if gpu_b is not None:
                     result = op_fn(gpu_a, gpu_b)
                 else:
-                    result = op_fn(gpu_a)
+                    result = op_fn(gpu_a, None)
+                end_ev.record()
                 torch.cuda.synchronize()
-                t1 = time.perf_counter()
-                time_us += int((t1 - t0) * 1_000_000)
+                time_us += start_ev.elapsed_time(end_ev) * 1000  # ms → us
             result = result.cpu()
 
             # ── write response ──

@@ -203,4 +203,51 @@ BenchResult bench_add_broadcast(const cudaoplib::TensorShape& a_shape, const cud
     return r;
 }
 
+/// Torch sum timing (handles dim parameter differently from binary ops)
+template <cudaoplib::SupportedDType T>
+float time_torch_sum_ms(const cudaoplib::Tensor<T>& a_cpu, int dim, int iters)
+{
+    auto& ref = cudaoplib_test::TorchRef::instance();
+    if (!ref.is_alive())
+        throw std::runtime_error("TorchRef not alive");
+    ref.set_repeat(iters);
+    ref.sum(a_cpu, dim);
+    float total_ms = ref.last_time_us() / 1000.0f;
+    ref.set_repeat(1);
+    return total_ms / iters;
+}
+
+// ── reduce sum ───────────────────────────────────────────────
+
+template <cudaoplib::SupportedDType T>
+BenchResult bench_sum(const cudaoplib::TensorShape& shape, int dim,
+                       int warmup = 1, int iters = 100,
+                       const std::string& shape_desc = "")
+{
+    using namespace cudaoplib;
+    BenchResult r;
+    r.op = "sum";
+    r.dtype = cudaoplib_test::dtype_to_str(dtype_to_enum(T{}));
+    r.shape_desc = shape_desc.empty() ? shape_to_string(shape) : shape_desc;
+
+    auto a = ones<T>(shape);
+    auto ag = a.to_gpu();
+    auto araw = ag.get_raw();
+
+    // compute output shape
+    cudaoplib::TensorShape out_shape = shape;
+    out_shape[dim] = 1;
+    r.numel = numel_from_shape(out_shape);
+    auto out_raw = cudaoplib_kernel::create_empty_gpu_tensor(
+        dtype_to_enum(T{}), out_shape);
+
+    r.our_ms = time_raw_kernel_ms(
+        [&]{ cudaoplib_kernel::sum(araw, out_raw, dim); },
+        warmup, iters);
+    r.torch_ms = time_torch_sum_ms<T>(a, dim, iters);
+
+    cudaoplib_kernel::free_gpu_tensor(out_raw);
+    return r;
+}
+
 } // namespace cudaoplib_bench

@@ -4,7 +4,12 @@
 #include <stdexcept>
 #include <cuda_fp16.h>
 #include <cstdint>
+#include <cuda_runtime.h>
 
+#include <thread>
+#include <mutex>
+
+#include "cuda_utils.h"
 
 #define MAX_TENSOR_DIM 8
 
@@ -137,5 +142,43 @@ Tensor copy_to_gpu_from_cpu(const Tensor& tensor);
 
 void free_gpu_tensor(Tensor& tensor);
 void free_cpu_tensor(Tensor& tensor);
+
+// scratch buffer (Meyer's singleton pattern — safe across TUs)
+
+inline void*& get_scratch_buffer() { static void* ptr = nullptr; return ptr; }
+inline size_t& get_scratch_buffer_size() { static size_t sz = 0; return sz; }
+inline std::mutex& get_scratch_buffer_mutex() { static std::mutex m; return m; }
+
+inline void* acquire_scratch_buffer(size_t requested_size)
+{
+    void*& buf = get_scratch_buffer();
+    size_t& buf_size = get_scratch_buffer_size();
+
+    if (requested_size > buf_size)
+    {
+        if (buf != nullptr)
+        {
+            CUDA_CHECK(cudaFree(buf));
+        }
+        CUDA_CHECK(cudaMalloc(&buf, requested_size));
+        buf_size = requested_size;
+        return buf;
+    }
+    else
+    {
+        return buf;
+    }
+}
+
+inline void free_scratch_buffer()
+{
+    void*& buf = get_scratch_buffer();
+    if (buf != nullptr)
+    {
+        CUDA_CHECK(cudaFree(buf));
+        buf = nullptr;
+        get_scratch_buffer_size() = 0;
+    }
+}
 
 } // namespace cudaoplib_kernel

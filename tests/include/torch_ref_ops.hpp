@@ -79,3 +79,16 @@ TORCHREF_BOOL_OP(logical_and, "logical_and")
 TORCHREF_BOOL_OP(logical_or, "logical_or")
 
 #undef TORCHREF_BOOL_OP
+
+// ── reduce ops ────────────────────────────────────────────────
+
+template <cudaoplib::SupportedDType T>
+cudaoplib::Tensor<T> TorchRef::sum(const cudaoplib::Tensor<T>& a, int dim)
+{
+    auto raw = a.get_raw();
+    auto result = run_op("sum", {raw}, dim);
+    if (!result)
+        throw std::runtime_error("TorchRef::sum failed: " + result.error());
+    last_time_us_ = result->time_us;
+    return _wrap_result<T>(*result);
+}

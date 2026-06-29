@@ -107,8 +107,8 @@ public:
     explicit operator Tensor<bool>() const { return to_bool(); }
 
     // Single ops
-    Tensor<LogicalDType> sum(const std::vector<int>& dims, bool keepdim=false) const;
-    Tensor<LogicalDType> sum(int dim, bool keepdim=false) const;
+    Tensor<LogicalDType> sum(const std::vector<int>& dims, bool keepdim=false) const requires ArithmeticType<LogicalDType>;
+    Tensor<LogicalDType> sum(int dim, bool keepdim=false) const requires ArithmeticType<LogicalDType>;
 
     // Simple getters
     TensorShape shape() const { return this->raw.shape; }
@@ -647,7 +647,7 @@ Tensor<bool> Tensor<LogicalDType>::operator||(const Tensor<LogicalDType>& anothe
 }
 
 template <SupportedDType LogicalDType>
-Tensor<LogicalDType> Tensor<LogicalDType>::sum(const std::vector<int>& dims, bool keepdim) const
+Tensor<LogicalDType> Tensor<LogicalDType>::sum(const std::vector<int>& dims, bool keepdim) const requires ArithmeticType<LogicalDType>
 {
     if (this->raw.device == Device::CPU)
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
@@ -662,12 +662,12 @@ Tensor<LogicalDType> Tensor<LogicalDType>::sum(const std::vector<int>& dims, boo
 
     for (auto dim : dims)
     {
-        if (dim < 0 || dim >= MAX_TENSOR_DIM)
+        if (dim < 0 || dim >= static_cast<int>(shape.size()))
             throw std::runtime_error("FATAL: cudaoplib::Tensor::sum: tensor dims out of range.");
 
         shape[dim] = 1;
         output = cudaoplib_kernel::create_empty_gpu_tensor(dtype_to_enum(Tensor<LogicalDType>::InternalDType{}), shape);
-        
+
         cudaoplib_kernel::sum(input, output, dim);
         std::swap(input, output);
 
@@ -684,7 +684,7 @@ Tensor<LogicalDType> Tensor<LogicalDType>::sum(const std::vector<int>& dims, boo
             if (std::find(dims.begin(), dims.end(), i) == dims.end())
                 new_shape.push_back(output.shape[i]);
         }
-        cudaoplib_kernel::calc_stride_and_numel(output.stride, new_shape);
+        output.numel = cudaoplib_kernel::calc_stride_and_numel(output.stride, new_shape);
         output.shape = new_shape;
     }
 
@@ -692,7 +692,7 @@ Tensor<LogicalDType> Tensor<LogicalDType>::sum(const std::vector<int>& dims, boo
 }
 
 template <SupportedDType LogicalDType>
-Tensor<LogicalDType> Tensor<LogicalDType>::sum(int dim, bool keepdim) const
+Tensor<LogicalDType> Tensor<LogicalDType>::sum(int dim, bool keepdim) const requires ArithmeticType<LogicalDType>
 {
     if (this->raw.device == Device::CPU)
         throw std::runtime_error("FATAL: operators on CPU unsupported.");
@@ -701,18 +701,18 @@ Tensor<LogicalDType> Tensor<LogicalDType>::sum(int dim, bool keepdim) const
 
     cudaoplib_kernel::Tensor output;
 
-    if (dim < 0 || dim >= MAX_TENSOR_DIM)
+    if (dim < 0 || dim >= static_cast<int>(this->raw.shape.size()))
         throw std::runtime_error("FATAL: cudaoplib::Tensor::sum: tensor dims out of range.");
 
     shape[dim] = 1;
     output = cudaoplib_kernel::create_empty_gpu_tensor(dtype_to_enum(Tensor<LogicalDType>::InternalDType{}), shape);
 
-    cudaoplib_kernel::sum(this->raw.data, output, dim);
+    cudaoplib_kernel::sum(this->raw, output, dim);
 
     if (!keepdim)
     {
         output.shape.erase(output.shape.begin() + dim);
-        cudaoplib_kernel::calc_stride_and_numel(output.stride, output.shape);
+        output.numel = cudaoplib_kernel::calc_stride_and_numel(output.stride, output.shape);
     }
 
     return Tensor<LogicalDType>(output);

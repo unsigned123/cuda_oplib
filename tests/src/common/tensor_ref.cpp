@@ -201,7 +201,7 @@ TorchPipe::~TorchPipe()
 
 bool TorchPipe::send(const std::string& op_name,
                      const std::vector<cudaoplib_kernel::Tensor>& tensors,
-                     int repeat)
+                     int repeat, int dim)
 {
     if (!pipe_alive_) return false;
 
@@ -210,6 +210,8 @@ bool TorchPipe::send(const std::string& op_name,
     // header
     if (!write_line(fd, "OP:" + op_name)) return false;
     if (!write_line(fd, "REPEAT:" + std::to_string(repeat))) return false;
+    if (dim >= 0)
+        if (!write_line(fd, "DIM:" + std::to_string(dim))) return false;
     if (!write_line(fd, "NTENSORS:" + std::to_string(tensors.size()))) return false;
     if (!write_line(fd, "")) return false;  // blank line
 
@@ -339,9 +341,10 @@ TorchRef::~TorchRef() = default;
 
 std::expected<TorchRefResult, std::string>
 TorchRef::run_op(const std::string& op_name,
-                 const std::vector<cudaoplib_kernel::Tensor>& tensors)
+                 const std::vector<cudaoplib_kernel::Tensor>& tensors,
+                 int dim)
 {
-    if (!pipe_->send(op_name, tensors, repeat_))
+    if (!pipe_->send(op_name, tensors, repeat_, dim))
         return std::unexpected(std::string("TorchRef: pipe send failed"));
     return pipe_->recv();
 }
